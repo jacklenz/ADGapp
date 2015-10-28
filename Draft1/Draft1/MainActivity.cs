@@ -25,6 +25,7 @@ namespace Draft1
             
             SetContentView(Resource.Layout.Main);
             SetUpMap();
+            
         }
 
         private void SetUpMap()
@@ -36,4 +37,3 @@ namespace Draft1
         }
     }
 }
-
