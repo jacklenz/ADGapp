@@ -5,26 +5,34 @@ using Android.Runtime;
 using Android.Views;
 using Android.Widget;
 using Android.OS;
+using Android.Gms.Maps;
 
 namespace Draft1
 {
     [Activity(Label = "Draft1", MainLauncher = true, Icon = "@drawable/icon")]
-    public class MainActivity : Activity
+    public class MainActivity : Activity, IOnMapReadyCallback
     {
-        int count = 1;
+        private GoogleMap mMap;
+
+        public void OnMapReady(GoogleMap googleMap)
+        {
+            mMap = googleMap;
+        }
 
         protected override void OnCreate(Bundle bundle)
         {
             base.OnCreate(bundle);
-
-            // Set our view from the "main" layout resource
+            
             SetContentView(Resource.Layout.Main);
+            SetUpMap();
+        }
 
-            // Get our button from the layout resource,
-            // and attach an event to it
-            Button button = FindViewById<Button>(Resource.Id.MyButton);
-
-            button.Click += delegate { button.Text = string.Format("{0} clicks!", count++); };
+        private void SetUpMap()
+        {
+            if (mMap == null)
+            {
+                FragmentManager.FindFragmentById<MapFragment>(Resource.Id.map).GetMapAsync(this);
+            }
         }
     }
 }
