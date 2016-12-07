@@ -362,9 +362,19 @@ namespace CraneGameeDue
 
                     //Same losing condition as before, but with a new case: we lose also if the player's bounding box intersect a wall point
                     if (cls == LevelState.Level2)
-                        if (!player.boundingBox.Intersects(terrain[1].boundingBox) || wallPoints.Any(p => player.boundingBox.Contains(p) == ContainmentType.Contains))
+                    {
+                        if (!player.boundingBox.Intersects(terrain[1].boundingBox))
                             player.hasLost = true;
-                    
+
+                        if (wallPoints.Any(p => player.boundingBox.Contains(p) == ContainmentType.Contains))
+                        {
+                            player.isCollidingWithWall = true;
+                        }
+
+                        if(!wallPoints.Any(p => terrain.First().boundingBox.Contains(p) == ContainmentType.Contains || player.boundingBox.Contains(p) == ContainmentType.Contains) && terrain.First().boundingBox.Intersects(terrain.Last().boundingBox))
+                            player.hasWon = true;
+                    }
+
                     #endregion
 
                     #region Level3
@@ -422,7 +432,7 @@ namespace CraneGameeDue
                         cgs = GameState.Win;
                     }
                     //If the ball hits the goal, player wins
-                    if (terrain.First().boundingBox.Intersects(terrain.Last().boundingBox))
+                    if (cls != LevelState.Level2 && terrain.First().boundingBox.Intersects(terrain.Last().boundingBox))
                         player.hasWon = true;
 
                     terrain[0].Update(gameTime); //ball update

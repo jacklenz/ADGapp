@@ -61,10 +61,10 @@ namespace CraneGameeDue
         {
             // Calculate the base transformation by combining
             // translation, rotation, and scaling
-            Matrix baseWorld = Matrix.CreateScale(Scale)*Matrix.CreateFromYawPitchRoll(Rotation.Y, Rotation.X, Rotation.Z)*Matrix.CreateTranslation(Position);
+            Matrix baseWorld = Matrix.CreateScale(Scale) * Matrix.CreateFromYawPitchRoll(Rotation.Y, Rotation.X, Rotation.Z) * Matrix.CreateTranslation(Position);
             foreach (ModelMesh mesh in Model.Meshes)
             {
-                Matrix localWorld = modelTransforms[mesh.ParentBone.Index]*baseWorld;
+                Matrix localWorld = modelTransforms[mesh.ParentBone.Index] * baseWorld;
                 foreach (ModelMeshPart meshPart in mesh.MeshParts)
                 {
                     BasicEffect effect = (BasicEffect)meshPart.Effect;
@@ -77,13 +77,13 @@ namespace CraneGameeDue
             }
 
             //Create a BoundingBoxBuffers instance and a basic effect to draw our boundingbox
-            BoundingBoxBuffers bbBuff = CreateBoundingBoxBuffers(boundingBox,graphicsDevice);
+            BoundingBoxBuffers bbBuff = CreateBoundingBoxBuffers(boundingBox, graphicsDevice);
             BasicEffect lineEffect = new BasicEffect(graphicsDevice);
             lineEffect.LightingEnabled = false;
             lineEffect.TextureEnabled = false;
             lineEffect.VertexColorEnabled = true;
             //Draw the boundingbox
-            DrawBoundingBox(bbBuff,lineEffect,graphicsDevice,View,Projection);
+            DrawBoundingBox(bbBuff, lineEffect, graphicsDevice, View, Projection);
         }
 
         //This method builds the drawable object related to the boundingbox limits
@@ -253,7 +253,7 @@ namespace CraneGameeDue
         public KeyboardState pks, cks;
         public float speed, wheelRot, steerRot;
         public float theta, phi, gamma;
-        public bool trysCatching;
+        public bool trysCatching, isCollidingWithWall;
         public bool hasLost, hasWon;
         float trasX1, trasY1, trasZ1;
         float trasX2, trasY2, trasZ2;
@@ -268,7 +268,7 @@ namespace CraneGameeDue
             trasX1 = trasY1 = trasZ1 = 0f;
             trasX2 = trasY2 = trasZ2 = 0f;
             trasX3 = trasY3 = trasZ3 = 0f;
-            trysCatching = hasLost = hasWon = false;
+            trysCatching = isCollidingWithWall = hasLost = hasWon = false;
         }
 
         //Override the bounding box transform in order to also take care of the rotation of the player's model
@@ -312,23 +312,29 @@ namespace CraneGameeDue
             transformBoundingBox();
 
             #region WheelsMovement
-            
+
             //Split the speed in it's X and Z component
             float speedx = (float)((Math.Sin(Rotation.Y)) * speed);
             float speedz = (float)((Math.Cos(Rotation.Y)) * speed);
-                        
+
             //Traslazione e rotazione delle ruote
             modelTransforms[2] = Matrix.CreateScale(Cst.wheelScale) * Matrix.CreateRotationX(wheelRot) * Matrix.CreateRotationY(steerRot) * Matrix.CreateTranslation(modelTransforms[2].Translation);
             modelTransforms[9] = Matrix.CreateScale(Cst.wheelScale) * Matrix.CreateRotationX(wheelRot) * Matrix.CreateRotationY(steerRot) * Matrix.CreateTranslation(modelTransforms[9].Translation);
             modelTransforms[10] = Matrix.CreateScale(Cst.wheelScale) * Matrix.CreateRotationX(wheelRot) * Matrix.CreateTranslation(modelTransforms[10].Translation);
             modelTransforms[8] = Matrix.CreateScale(Cst.wheelScale) * Matrix.CreateRotationX(wheelRot) * Matrix.CreateTranslation(modelTransforms[8].Translation);
-            
+
 
             if (cks.IsKeyDown(Keys.Up) && !hasLost && !hasWon)
             {
                 wheelRot += .2f;
                 Position.X += speedx;
                 Position.Z += speedz;
+                if (isCollidingWithWall)
+                {
+                    Position.X -= speedx*1.01f;
+                    Position.Z -= speedz*1.01f;
+                    isCollidingWithWall = false;
+                }
 
                 if (cks.IsKeyDown(Keys.Left))
                 {
@@ -340,16 +346,22 @@ namespace CraneGameeDue
                     Rotation.Y -= speed * Cst.rotAngleSpeedSmoother;
                     if (steerRot > -.5f) steerRot -= .1f;
                 }
-                else if(steerRot>0)
+                else if (steerRot > 0)
                     steerRot -= .1f;
                 else if (steerRot < 0)
                     steerRot += .1f;
             }
-            if (cks.IsKeyDown(Keys.Down) && !hasWon && !hasWon)
+            else if (cks.IsKeyDown(Keys.Down) && !hasLost && !hasWon)
             {
                 wheelRot -= .2f;
                 Position.X -= speedx;
                 Position.Z -= speedz;
+                if (isCollidingWithWall)
+                {
+                    Position.X += speedx*1.01f;
+                    Position.Z += speedz*1.01f;
+                    isCollidingWithWall = false;
+                }
 
                 if (cks.IsKeyDown(Keys.Left))
                 {
@@ -366,17 +378,23 @@ namespace CraneGameeDue
                 else if (steerRot < 0)
                     steerRot += .1f;
             }
-            
+            else if (!hasLost && !hasWon && isCollidingWithWall)
+                {
+                    Position.X -= speedx * 1.1f;
+                    Position.Z -= speedz * 1.1f;
+                    isCollidingWithWall = false;
+                }
+
             #endregion
 
             #region CraneMovement
-            
+
             #region Arm1
 
             //First arm vertical rotation
             if (cks.IsKeyDown(Keys.W) && phi < Cst.phiMax)
             {
-                phi += .1f;               
+                phi += .1f;
             }
             if (cks.IsKeyDown(Keys.S) && phi > Cst.phiMin)
             {
@@ -404,12 +422,12 @@ namespace CraneGameeDue
             trasZ1 = (float)Math.Cos(phi) * (float)Math.Cos(theta);
 
             //Apply the transforms to each mesh linked to the second arm ..
-            for(int i = 14; i<16; i++)
+            for (int i = 14; i < 16; i++)
                 modelTransforms[i].Translation = modelTransforms[12].Translation + new Vector3(trasX1, trasY1, trasZ1);
             modelTransforms[16].Translation = modelTransforms[12].Translation + new Vector3(trasX1 - Cst.heightOffset, trasY1, trasZ1);
             // .. and to the second arm
             for (int i = 14; i < 17; i++)
-                modelTransforms[i] = Matrix.CreateScale(1f) * Matrix.CreateRotationX(phi+gamma) * Matrix.CreateRotationY(theta) * Matrix.CreateRotationZ(0f) * Matrix.CreateTranslation(modelTransforms[16].Translation);
+                modelTransforms[i] = Matrix.CreateScale(1f) * Matrix.CreateRotationX(phi + gamma) * Matrix.CreateRotationY(theta) * Matrix.CreateRotationZ(0f) * Matrix.CreateTranslation(modelTransforms[16].Translation);
 
             //second arm vertical rotation
             if (cks.IsKeyDown(Keys.T) && gamma < Cst.gammaMax)
@@ -426,7 +444,7 @@ namespace CraneGameeDue
 
             //Define hook translation components
             trasX2 = ((float)Math.Sin(theta)) * ((float)Math.Cos(phi) + (float)Math.Cos(phi + gamma));
-            trasY2 = - (float)Math.Sin(phi) - (float)Math.Sin(phi + gamma);
+            trasY2 = -(float)Math.Sin(phi) - (float)Math.Sin(phi + gamma);
             trasZ2 = ((float)Math.Cos(theta)) * ((float)Math.Cos(phi) + (float)Math.Cos(phi + gamma));
             //Unify them
             for (int i = 17; i < 19; i++)
@@ -451,8 +469,6 @@ namespace CraneGameeDue
             #endregion
         }
     }
-
-
 
     //This class extracts the vertex positions of the model
     public static class VertexElementExtractor
